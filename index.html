@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Workouts" />
+  <meta name="theme-color" content="#F2F2F7" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>Workouts</title>
+</head>
+<body>
+  <div id="app">
+    <!-- TODAY VIEW -->
+    <section class="view active" id="view-today">
+      <header class="header">
+        <div class="header-date" id="today-date">Today</div>
+        <h1 class="header-title">Summary</h1>
+      </header>
+      <main class="content">
+        <div id="encouragement-banner" class="encouragement hidden"></div>
+
+        <div class="card stat-card">
+          <div class="stat-row">
+            <div class="stat">
+              <div class="stat-label">Workouts</div>
+              <div class="stat-value" id="stat-total">0</div>
+              <div class="stat-unit">total</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">This Week</div>
+              <div class="stat-value" id="stat-week">0</div>
+              <div class="stat-unit">sessions</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Volume</div>
+              <div class="stat-value" id="stat-volume">0</div>
+              <div class="stat-unit">kg today</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-header">
+          <h2>Today's Workout</h2>
+          <button class="btn-add" id="btn-add-exercise" aria-label="Add exercise">+</button>
+        </div>
+
+        <div id="today-exercises" class="exercise-list"></div>
+
+        <div class="empty-state" id="today-empty">
+          <div class="empty-icon">💪</div>
+          <div class="empty-title">No exercises yet</div>
+          <div class="empty-sub">Tap + to start logging</div>
+        </div>
+      </main>
+    </section>
+
+    <!-- HISTORY VIEW -->
+    <section class="view" id="view-history">
+      <header class="header">
+        <h1 class="header-title">History</h1>
+      </header>
+      <main class="content">
+        <div id="history-list"></div>
+        <div class="empty-state" id="history-empty">
+          <div class="empty-icon">📖</div>
+          <div class="empty-title">No history yet</div>
+          <div class="empty-sub">Your finished workouts appear here</div>
+        </div>
+      </main>
+    </section>
+
+    <!-- PROGRESS VIEW -->
+    <section class="view" id="view-progress">
+      <header class="header">
+        <h1 class="header-title">Progress</h1>
+      </header>
+      <main class="content">
+        <div id="progress-list"></div>
+        <div class="empty-state" id="progress-empty">
+          <div class="empty-icon">📈</div>
+          <div class="empty-title">No progress data</div>
+          <div class="empty-sub">Log some workouts to see trends</div>
+        </div>
+      </main>
+    </section>
+
+    <!-- TAB BAR -->
+    <nav class="tabbar">
+      <button class="tab active" data-view="today">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 5h-2v5l4.25 2.52.77-1.28L13 11.25V7z"/></svg>
+        <span>Today</span>
+      </button>
+      <button class="tab" data-view="history">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v2H4V4zm0 5h16v2H4V9zm0 5h10v2H4v-2zm0 5h10v2H4v-2z"/></svg>
+        <span>History</span>
+      </button>
+      <button class="tab" data-view="progress">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17l6-6 4 4 8-8v4h-2V9l-6 6-4-4-8 8z"/></svg>
+        <span>Progress</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- EXERCISE MODAL -->
+  <div class="modal" id="modal-exercise">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <button class="modal-cancel" id="exercise-cancel">Cancel</button>
+        <div class="modal-title" id="exercise-modal-title">Add Exercise</div>
+        <button class="modal-done" id="exercise-done">Done</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Exercise Name</label>
+          <input type="text" id="exercise-name" placeholder="e.g. Bench Press" autocomplete="off" />
+        </div>
+
+        <div class="sets-header">
+          <div>Set</div>
+          <div>Weight (kg)</div>
+          <div>Reps</div>
+          <div></div>
+        </div>
+        <div id="sets-container"></div>
+        <button class="btn-secondary" id="btn-add-set">+ Add Set</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
