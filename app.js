@@ -62,11 +62,18 @@ function countWeekWorkouts() {
   return n;
 }
 
-function todayVolume() {
-  const ex = state.sessions[todayKey()] || [];
-  let vol = 0;
-  ex.forEach(e => e.sets.forEach(s => { vol += (Number(s.weight) || 0) * (Number(s.reps) || 0); }));
-  return Math.round(vol);
+function countTodayWorkouts() {
+  return (state.sessions[todayKey()] || []).length;
+}
+
+const TODAY_GOAL = 5;
+const WEEK_GOAL = 15;
+const MOVE_CIRCUMFERENCE = 2 * Math.PI * 86; // ≈ 540.35
+const WEEK_CIRCUMFERENCE = 2 * Math.PI * 64; // ≈ 402.12
+
+function setRing(el, value, goal, circumference) {
+  const ratio = Math.min(1, goal > 0 ? value / goal : 0);
+  el.style.strokeDashoffset = String(circumference * (1 - ratio));
 }
 
 // ============ RENDER ============
@@ -80,9 +87,13 @@ function renderToday() {
   const dateEl = document.getElementById('today-date');
   dateEl.textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
 
+  const today = countTodayWorkouts();
+  const week = countWeekWorkouts();
   document.getElementById('stat-total').textContent = countTotalWorkouts();
-  document.getElementById('stat-week').textContent = countWeekWorkouts();
-  document.getElementById('stat-volume').textContent = todayVolume();
+  document.getElementById('stat-today').textContent = today;
+  document.getElementById('stat-week').textContent = week;
+  setRing(document.getElementById('ring-move'), today, TODAY_GOAL, MOVE_CIRCUMFERENCE);
+  setRing(document.getElementById('ring-week'), week, WEEK_GOAL, WEEK_CIRCUMFERENCE);
 
   const list = document.getElementById('today-exercises');
   const empty = document.getElementById('today-empty');
