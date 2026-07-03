@@ -15,8 +15,10 @@ const encouragements = [
 
 let state = {
   sessions: {}, // { 'YYYY-MM-DD': [ {id, name, sets: [{weight, reps}] } ] }
+  measurements: [] // [{id, date, weight, biceps, waist}]
 };
 let editingExercise = null; // {date, id} or null
+let editingMeasurementId = null;
 
 function load() {
   try {
@@ -24,6 +26,7 @@ function load() {
     if (raw) state = JSON.parse(raw);
   } catch (e) { console.warn('load failed', e); }
   if (!state.sessions) state.sessions = {};
+  if (!Array.isArray(state.measurements)) state.measurements = [];
 }
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -44,11 +47,11 @@ function formatShortDate(key) {
 }
 function uid() { return Math.random().toString(36).slice(2, 10); }
 
+// A "workout" = a whole day with at least one exercise logged.
 function countTotalWorkouts() {
-  // Each exercise entry = one "recorded workout" per user's spec
-  let total = 0;
-  for (const k in state.sessions) total += state.sessions[k].length;
-  return total;
+  let n = 0;
+  for (const k in state.sessions) if (state.sessions[k].length > 0) n++;
+  return n;
 }
 
 function countWeekWorkouts() {
@@ -56,18 +59,20 @@ function countWeekWorkouts() {
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   let n = 0;
   for (const k in state.sessions) {
+    if ((state.sessions[k] || []).length === 0) continue;
     const d = new Date(k + 'T00:00:00');
-    if (d >= weekAgo) n += state.sessions[k].length;
+    if (d >= weekAgo) n++;
   }
   return n;
 }
 
+// Today counts as 1 if we've logged any exercise today, else 0.
 function countTodayWorkouts() {
-  return (state.sessions[todayKey()] || []).length;
+  return (state.sessions[todayKey()] || []).length > 0 ? 1 : 0;
 }
 
-const TODAY_GOAL = 5;
-const WEEK_GOAL = 15;
+const TODAY_GOAL = 1;
+const WEEK_GOAL = 5;
 const MOVE_CIRCUMFERENCE = 2 * Math.PI * 86; // ≈ 540.35
 const WEEK_CIRCUMFERENCE = 2 * Math.PI * 64; // ≈ 402.12
 
@@ -81,6 +86,7 @@ function render() {
   renderToday();
   renderHistory();
   renderProgress();
+  renderBody();
 }
 
 function renderToday() {
@@ -207,6 +213,148 @@ function renderProgress() {
   });
 }
 
+function renderBody() {
+  const list = document.getElementById('measurements-list');
+  const empty = document.getElementById('measurements-empty');
+  list.innerHTML = '';
+
+  const sorted = [...state.measurements].sort((a, b) => a.date.localeCompare(b.date));
+
+  // summary card (latest values + delta vs first)
+  const setLatest = (id, val, unit = '') => {
+    document.getElementById(id).textContent = val == null || val === '' ? '—' : val;
+  };
+  const setDelta = (id, latest, first, unit) => {
+    const el = document.getElementById(id);
+    if (latest == null || first == null || latest === first) {
+      el.textContent = latest != null && first != null ? '±0 ' + unit : '';
+      el.className = 'body-delta flat';
+      return;
+    }
+    const diff = +(latest - first).toFixed(1);
+    const isWaist = id.includes('waist');
+    const good = isWaist ? diff < 0 : diff > 0;
+    el.textContent = (diff > 0 ? '+' : '') + diff + ' ' + unit;
+    el.className = 'body-delta ' + (good ? 'up' : 'down');
+  };
+
+  if (sorted.length === 0) {
+    setLatest('body-weight-latest', '');
+    setLatest('body-biceps-latest', '');
+    setLatest('body-waist-latest', '');
+    document.getElementById('body-weight-delta').textContent = '';
+    document.getElementById('body-biceps-delta').textContent = '';
+    document.getElementById('body-waist-delta').textContent = '';
+    empty.classList.add('visible');
+    return;
+  }
+  empty.classList.remove('visible');
+
+  const latest = sorted[sorted.length - 1];
+  const first = sorted[0];
+  setLatest('body-weight-latest', latest.weight ?? '—');
+  setLatest('body-biceps-latest', latest.biceps ?? '—');
+  setLatest('body-waist-latest', latest.waist ?? '—');
+  setDelta('body-weight-delta', latest.weight, first.weight, 'kg');
+  setDelta('body-biceps-delta', latest.biceps, first.biceps, 'cm');
+  setDelta('body-waist-delta', latest.waist, first.waist, 'cm');
+
+  // list newest first
+  const reversed = [...sorted].reverse();
+  reversed.forEach(m => {
+    const parts = [];
+    if (m.weight != null) parts.push(m.weight + ' kg');
+    if (m.biceps != null) parts.push(m.biceps + ' cm biceps');
+    if (m.waist != null) parts.push(m.waist + ' cm waist');
+    const card = document.createElement('div');
+    card.className = 'measurement-card';
+    card.dataset.id = m.id;
+    card.innerHTML = `
+      <div>
+        <div class="measurement-date">${formatShortDate(m.date)}</div>
+        <div class="measurement-values">${parts.join('  ·  ')}</div>
+      </div>
+      <div class="measurement-chev">›</div>
+    `;
+    card.addEventListener('click', () => openMeasurementModal(m.id));
+    list.appendChild(card);
+  });
+}
+
+function openMeasurementModal(id = null) {
+  editingMeasurementId = null;
+  const modal = document.getElementById('modal-measurement');
+  const title = document.getElementById('measurement-modal-title');
+  const del = document.getElementById('m-delete');
+  const dateEl = document.getElementById('m-date');
+  const wEl = document.getElementById('m-weight');
+  const bEl = document.getElementById('m-biceps');
+  const wa = document.getElementById('m-waist');
+
+  if (id) {
+    const m = state.measurements.find(x => x.id === id);
+    if (m) {
+      editingMeasurementId = id;
+      title.textContent = 'Edit Measurement';
+      dateEl.value = m.date;
+      wEl.value = m.weight ?? '';
+      bEl.value = m.biceps ?? '';
+      wa.value = m.waist ?? '';
+      del.style.display = 'block';
+    }
+  } else {
+    title.textContent = 'Add Measurement';
+    dateEl.value = todayKey();
+    wEl.value = '';
+    bEl.value = '';
+    wa.value = '';
+    del.style.display = 'none';
+  }
+  modal.classList.add('visible');
+}
+
+function closeMeasurementModal() {
+  document.getElementById('modal-measurement').classList.remove('visible');
+  editingMeasurementId = null;
+}
+
+function saveMeasurement() {
+  const date = document.getElementById('m-date').value;
+  const weight = document.getElementById('m-weight').value;
+  const biceps = document.getElementById('m-biceps').value;
+  const waist = document.getElementById('m-waist').value;
+
+  if (!date) { alert('Pick a date.'); return; }
+  if (!weight && !biceps && !waist) { alert('Enter at least one measurement.'); return; }
+
+  const entry = {
+    id: editingMeasurementId || uid(),
+    date,
+    weight: weight === '' ? null : Number(weight),
+    biceps: biceps === '' ? null : Number(biceps),
+    waist: waist === '' ? null : Number(waist)
+  };
+
+  if (editingMeasurementId) {
+    const i = state.measurements.findIndex(m => m.id === editingMeasurementId);
+    if (i >= 0) state.measurements[i] = entry;
+  } else {
+    state.measurements.push(entry);
+  }
+  save();
+  closeMeasurementModal();
+  render();
+}
+
+function deleteMeasurement() {
+  if (!editingMeasurementId) return;
+  if (!confirm('Delete this measurement?')) return;
+  state.measurements = state.measurements.filter(m => m.id !== editingMeasurementId);
+  save();
+  closeMeasurementModal();
+  render();
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -322,6 +470,52 @@ function deleteExercise(id) {
   render();
 }
 
+// ============ BACKUP ============
+function exportBackup() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const ts = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `workouts-backup-${ts}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function importBackup(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data || typeof data !== 'object' || !data.sessions) throw new Error('Invalid backup file');
+      if (!confirm('Replace all current data with this backup?')) return;
+      state = { sessions: data.sessions };
+      save();
+      render();
+      alert('Backup restored successfully.');
+      closeSettings();
+    } catch (err) {
+      alert('Could not read backup file: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function clearAllData() {
+  if (!confirm('Delete ALL workouts? This cannot be undone.')) return;
+  if (!confirm('Are you sure? Export a backup first if you want to keep your data.')) return;
+  state = { sessions: {} };
+  localStorage.removeItem(ENCOURAGE_KEY);
+  save();
+  render();
+  closeSettings();
+}
+
+function openSettings() { document.getElementById('modal-settings').classList.add('visible'); }
+function closeSettings() { document.getElementById('modal-settings').classList.remove('visible'); }
+
 // ============ NAV ============
 function switchView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -344,6 +538,27 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-add-set').addEventListener('click', () => addSetRow());
   document.getElementById('modal-exercise').addEventListener('click', (e) => {
     if (e.target.id === 'modal-exercise') closeExerciseModal();
+  });
+
+  document.getElementById('btn-settings').addEventListener('click', openSettings);
+  document.getElementById('settings-cancel').addEventListener('click', closeSettings);
+  document.getElementById('modal-settings').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-settings') closeSettings();
+  });
+  document.getElementById('btn-export').addEventListener('click', exportBackup);
+  document.getElementById('btn-import').addEventListener('click', () => document.getElementById('import-file').click());
+  document.getElementById('import-file').addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) importBackup(e.target.files[0]);
+    e.target.value = '';
+  });
+  document.getElementById('btn-clear').addEventListener('click', clearAllData);
+
+  document.getElementById('btn-add-measurement').addEventListener('click', () => openMeasurementModal());
+  document.getElementById('measurement-cancel').addEventListener('click', closeMeasurementModal);
+  document.getElementById('measurement-done').addEventListener('click', saveMeasurement);
+  document.getElementById('m-delete').addEventListener('click', deleteMeasurement);
+  document.getElementById('modal-measurement').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-measurement') closeMeasurementModal();
   });
 
   if ('serviceWorker' in navigator) {

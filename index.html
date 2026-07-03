@@ -16,9 +16,14 @@
   <div id="app">
     <!-- TODAY VIEW -->
     <section class="view active" id="view-today">
-      <header class="header">
-        <div class="header-date" id="today-date">Today</div>
-        <h1 class="header-title">Summary</h1>
+      <header class="header header-row">
+        <div>
+          <div class="header-date" id="today-date">Today</div>
+          <h1 class="header-title">Summary</h1>
+        </div>
+        <button class="header-btn" id="btn-settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+        </button>
       </header>
       <main class="content">
         <div id="encouragement-banner" class="encouragement hidden"></div>
@@ -33,7 +38,7 @@
             </svg>
             <div class="rings-center">
               <div class="rings-total" id="stat-total">0</div>
-              <div class="rings-total-label">TOTAL</div>
+              <div class="rings-total-label">DAYS</div>
             </div>
           </div>
           <div class="rings-legend">
@@ -41,14 +46,14 @@
               <span class="dot dot-move"></span>
               <div class="legend-text">
                 <div class="legend-label">Today</div>
-                <div class="legend-value"><span id="stat-today">0</span><span class="legend-goal">/5</span></div>
+                <div class="legend-value"><span id="stat-today">0</span><span class="legend-goal">/1</span></div>
               </div>
             </div>
             <div class="legend-item">
               <span class="dot dot-week"></span>
               <div class="legend-text">
                 <div class="legend-label">This Week</div>
-                <div class="legend-value"><span id="stat-week">0</span><span class="legend-goal">/15</span></div>
+                <div class="legend-value"><span id="stat-week">0</span><span class="legend-goal">/5</span></div>
               </div>
             </div>
           </div>
@@ -84,6 +89,44 @@
       </main>
     </section>
 
+    <!-- BODY VIEW -->
+    <section class="view" id="view-body">
+      <header class="header header-row">
+        <div>
+          <div class="header-date">Body</div>
+          <h1 class="header-title">Measurements</h1>
+        </div>
+        <button class="btn-add" id="btn-add-measurement" aria-label="Add measurement">+</button>
+      </header>
+      <main class="content">
+        <div class="rings-card body-summary" id="body-summary-card">
+          <div class="body-stat">
+            <div class="body-label">Weight</div>
+            <div class="body-value"><span id="body-weight-latest">—</span><span class="body-unit">kg</span></div>
+            <div class="body-delta" id="body-weight-delta"></div>
+          </div>
+          <div class="body-stat">
+            <div class="body-label">Biceps</div>
+            <div class="body-value"><span id="body-biceps-latest">—</span><span class="body-unit">cm</span></div>
+            <div class="body-delta" id="body-biceps-delta"></div>
+          </div>
+          <div class="body-stat">
+            <div class="body-label">Waist</div>
+            <div class="body-value"><span id="body-waist-latest">—</span><span class="body-unit">cm</span></div>
+            <div class="body-delta" id="body-waist-delta"></div>
+          </div>
+        </div>
+
+        <div class="section-header"><h2>History</h2></div>
+        <div id="measurements-list"></div>
+        <div class="empty-state" id="measurements-empty">
+          <div class="empty-icon">📏</div>
+          <div class="empty-title">No measurements yet</div>
+          <div class="empty-sub">Tap + to log this week's numbers</div>
+        </div>
+      </main>
+    </section>
+
     <!-- PROGRESS VIEW -->
     <section class="view" id="view-progress">
       <header class="header">
@@ -109,11 +152,65 @@
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v2H4V4zm0 5h16v2H4V9zm0 5h10v2H4v-2zm0 5h10v2H4v-2z"/></svg>
         <span>History</span>
       </button>
+      <button class="tab" data-view="body">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a3 3 0 100 6 3 3 0 000-6zm-3 8a2 2 0 00-2 2v5h2v7h6v-7h2v-5a2 2 0 00-2-2H9z"/></svg>
+        <span>Body</span>
+      </button>
       <button class="tab" data-view="progress">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17l6-6 4 4 8-8v4h-2V9l-6 6-4-4-8 8z"/></svg>
         <span>Progress</span>
       </button>
     </nav>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div class="modal" id="modal-settings">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <button class="modal-cancel" id="settings-cancel">Done</button>
+        <div class="modal-title">Backup &amp; Data</div>
+        <span style="width:56px"></span>
+      </div>
+      <div class="modal-body">
+        <p class="settings-help">Save a backup file to your iPhone before deleting or reinstalling the app. You can restore it any time.</p>
+        <button class="btn-primary" id="btn-export">⬇︎ Export Backup</button>
+        <button class="btn-secondary" id="btn-import">⬆︎ Import Backup</button>
+        <input type="file" id="import-file" accept="application/json,.json" hidden />
+        <button class="btn-danger" id="btn-clear">Clear All Data</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEASUREMENT MODAL -->
+  <div class="modal" id="modal-measurement">
+    <div class="modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <button class="modal-cancel" id="measurement-cancel">Cancel</button>
+        <div class="modal-title" id="measurement-modal-title">Add Measurement</div>
+        <button class="modal-done" id="measurement-done">Save</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="m-date" />
+        </div>
+        <div class="form-group">
+          <label>Weight (kg)</label>
+          <input type="number" inputmode="decimal" step="0.1" id="m-weight" placeholder="0.0" />
+        </div>
+        <div class="form-group">
+          <label>Biceps (cm)</label>
+          <input type="number" inputmode="decimal" step="0.1" id="m-biceps" placeholder="0.0" />
+        </div>
+        <div class="form-group">
+          <label>Waist (cm)</label>
+          <input type="number" inputmode="decimal" step="0.1" id="m-waist" placeholder="0.0" />
+        </div>
+        <button class="btn-danger" id="m-delete" style="display:none">Delete Entry</button>
+      </div>
+    </div>
   </div>
 
   <!-- EXERCISE MODAL -->
